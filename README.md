@@ -58,3 +58,29 @@ else:
 ```
 
 
+# <a name="p2">Dataset Importing</a>
+The dataset has been scraped from Twitter and then labeled and used in a local competition in EGPYT, It contains 2,746 tweets extracted using the **Twitter API**. The tweets have been annotated (neg = negative, pos = positive, and neu = neutral) and they can be used to detect sentiment.
+
+**Dataset files:**
+- train.csv - the training set has 2059 unique entry
+- test.csv - the test set has 687 unique entry
+
+
+**The dataset has 2 fields:**
+1. **Tweet**: the text of the tweet
+2. **Class**: the polarity of the tweet **(neg = negative, pos = positive, and neu = neutral)**
+
+![image](https://drive.google.com/uc?export=view&id=1f2RlQTR5QxLbOG4ygTeQZqeMjzZiTJV5)
+
+```Python
+import numpy as np
+import pandas as pd
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+Data_set = pd.read_csv("/kaggle/input/nlp-arabic-tweets/train.csv")
+Data_set
+```
+
+
