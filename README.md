@@ -29,3 +29,32 @@ You can open the notebook in Kaggle from the icon below.<br>
 6. [Infer the test data and prepart the subbmion file](#p6)
 
 
+
+# <a name="p1">Environment Setup</a>
+
+### <a name="p1.1">Enable the GPU</a>
+```Python
+import torch
+# If there's a GPU available...
+if torch.cuda.is_available():    
+    # Tell PyTorch to use the GPU.    
+    device = torch.device("cuda")
+    print('There are %d GPU(s) available.' % torch.cuda.device_count())
+    print('We will use the GPU:', torch.cuda.get_device_name(0))
+    !nvidia-smi
+# If not...
+else:
+    print('No GPU available, using the CPU instead.')
+    device = torch.device("cpu")
+```
+### <a name="p1.2">Dependencies Installation</a>
+```Python
+!pip install gdown
+!pip install pyarabic
+!pip install farasapy
+!pip install emoji
+!pip install transformers
+!git clone https://github.com/aub-mind/arabert.git
+```
+
+
