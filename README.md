@@ -208,3 +208,76 @@ X_train, X_validation, y_train, y_validation=train_test_split(df['tweet'], df['c
 ```
 
 
+
+# <a name="p4">Build Classical Machine learning Models</a>
+![image](https://drive.google.com/uc?export=view&id=1IirV4FvQQ9Bd_JZnOMGTc2o7EcF61oY2)
+
+### <a name="p4.1">TF-IDF Embedding</a>
+
+```Python
+from sklearn.feature_extraction.text import TfidfVectorizer
+def tfidf_ngram(n_gram,X_train,X_val):
+    vectorizer = TfidfVectorizer(ngram_range=(n_gram,n_gram))
+    x_train_vec = vectorizer.fit_transform(X_train)
+    x_test_vec = vectorizer.transform(X_val)
+    return x_train_vec,x_test_vec
+# Applying tfidf with 1-gram, and 2-gram
+tfidf_1g_transformation_train,tfidf_1g_transformation_validation= tfidf_ngram(1,X_train,X_validation)
+tfidf_2g_transformation_train,tfidf_2g_transformation_validation= tfidf_ngram(2,X_train,X_validation)
+```
+
+### <a name="p4.2">Train Different Classifiers and Select the Champion Model</a>
+
+```Python
+
+%matplotlib ipympl
+
+from sklearn.svm import SVC
+from xgboost import XGBClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.model_selection import cross_val_score, cross_validate
+import matplotlib.pyplot as plt
+
+text_embedding={
+    'TF_IDF 1_gram':(tfidf_1g_transformation_train,tfidf_1g_transformation_validation),
+    'TF_IDF 2_gram':(tfidf_2g_transformation_train,tfidf_2g_transformation_validation)
+}
+models=[SVC(), KNeighborsClassifier(), XGBClassifier(), RandomForestClassifier(), DecisionTreeClassifier(), LogisticRegression(), MultinomialNB()]
+
+
+highest_test_accuracy=0
+champion_model_name=''
+champion_model=''
+champion_embedding=''
+results_dict={'Model Name':[],'Embedding type':[],'Training Accuracy':[],'Testing Accuracy':[]}
+
+for model in models:
+  for embedding_vector in text_embedding.keys():
+    train=text_embedding[embedding_vector][0]
+    test=text_embedding[embedding_vector][1]
+    model.fit(train, y_train)
+    results_dict['Model Name'].append(type(model).__name__)
+    results_dict['Embedding type'].append(embedding_vector)
+    train_acc=model.score(train, y_train)
+    results_dict['Training Accuracy'].append(train_acc)
+    test_acc=model.score(test, y_validation)
+    results_dict['Testing Accuracy'].append(test_acc)
+    if test_acc > highest_test_accuracy:
+      highest_test_accuracy=test_acc
+      champion_model_name=type(model).__name__
+      champion_model=model
+      champion_embedding=embedding_vector
+
+results_df=pd.DataFrame(results_dict)
+results_df['Model Name']=results_df['Model Name'].apply(lambda x: x[:-10] if 'Classifier' in x else x)
+results_df
+
+print('champion_model is ',champion_model_name)
+print('champion_embedding is',champion_embedding)
+```
