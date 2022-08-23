@@ -8,7 +8,7 @@ You can open the notebook in Kaggle from the icon below.<br>
 
 * **Sentiment Analysis:** It is the interpretation and classification of emotions (positive, negative and neutral) within text data using text analysis techniques. Sentiment analysis allows organizations to identify public sentiment towards certain words or topics.
 
-![image](https://drive.google.com/uc?export=view&id=1KQkdq_eJ1dqIEnOIUdR3Gvi8uRe9pQqi)
+![image](Image/Inro.jpg)
 
 
 
@@ -70,7 +70,7 @@ The dataset has been scraped from Twitter and then labeled and used in a local c
 1. **Tweet**: the text of the tweet
 2. **Class**: the polarity of the tweet **(neg = negative, pos = positive, and neu = neutral)**
 
-![image](https://drive.google.com/uc?export=view&id=1f2RlQTR5QxLbOG4ygTeQZqeMjzZiTJV5)
+![image](Image/Dataset.png)
 
 ```Python
 import numpy as np
@@ -82,8 +82,6 @@ for dirname, _, filenames in os.walk('/kaggle/input'):
 Data_set = pd.read_csv("/kaggle/input/nlp-arabic-tweets/train.csv")
 Data_set
 ```
-
-
 
 
 # <a name="p3">Dataset Preparation</a>
@@ -210,7 +208,7 @@ X_train, X_validation, y_train, y_validation=train_test_split(df['tweet'], df['c
 
 
 # <a name="p4">Build Classical Machine learning Models</a>
-![image](https://drive.google.com/uc?export=view&id=1IirV4FvQQ9Bd_JZnOMGTc2o7EcF61oY2)
+![image](Image/Machine_learning.png)
 
 ### <a name="p4.1">TF-IDF Embedding</a>
 
@@ -288,7 +286,7 @@ print('champion_embedding is',champion_embedding)
 # <a name="p5">Transfer Learning a Pre-trained Models</a>
 - Used a transformer-based model pre-trained on Arabic language dataset from hugging face called **'MARBERT'** model, chech the link for more infos [hugging face](https://huggingface.co/UBC-NLP/MARBERT).
 
-![image](https://drive.google.com/uc?export=view&id=1iiQtLmtmTgWAqPsOie8kVXCs65RgJJeT)
+![image](Image/Transfer_learning.png)
 
 - Kindly, check this link to read more about the transfer learning [what-is-transfer-learning-and-why-is-it-needed](https://www.educative.io/answers/what-is-transfer-learning-and-why-is-it-needed)
 
@@ -484,6 +482,7 @@ for _ in trange(epochs, desc="Epoch"):
 # <a name="p6">Infer the Test Data and Prepare the Submission File</a>
 
 ![image](https://drive.google.com/uc?export=view&id=1o72wCZZQIF5DcGlzUBK9yYIkiqlwHrT-)
+![image](Image/Inferance.png)
 
 #### **Testing Dataset Preparation**
 
@@ -530,7 +529,7 @@ output_labels = lable_encoder.inverse_transform(pred_flat)
 ```
 
 #### **Create the Submission File**
-![image](https://drive.google.com/uc?export=view&id=19ryQs1gNHFYqiYtqbnAQ8RFhpf7uPRMa)
+![image](Image/Submission.png)
 
 ```Python
 submission = pd.DataFrame({"Id":np.arange(1, len(output_labels)+1), "class":output_labels})
