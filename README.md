@@ -481,7 +481,7 @@ for _ in trange(epochs, desc="Epoch"):
 
 # <a name="p6">Infer the Test Data and Prepare the Submission File</a>
 
-![image](https://drive.google.com/uc?export=view&id=1o72wCZZQIF5DcGlzUBK9yYIkiqlwHrT-)
+[//]: # (![image]&#40;https://drive.google.com/uc?export=view&id=1o72wCZZQIF5DcGlzUBK9yYIkiqlwHrT-&#41;)
 ![image](Image/Inferance.png)
 
 #### **Testing Dataset Preparation**
