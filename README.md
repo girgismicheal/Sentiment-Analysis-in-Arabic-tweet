@@ -291,3 +291,189 @@ print('champion_embedding is',champion_embedding)
 ![image](https://drive.google.com/uc?export=view&id=1iiQtLmtmTgWAqPsOie8kVXCs65RgJJeT)
 
 - Kindly, check this link to read more about the transfer learning [what-is-transfer-learning-and-why-is-it-needed](https://www.educative.io/answers/what-is-transfer-learning-and-why-is-it-needed)
+
+
+
+
+**Model and Tokenizer initialization**
+
+```Python
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
+tokenizer =AutoTokenizer.from_pretrained('UBC-NLP/MARBERT')
+model = AutoModelForSequenceClassification.from_pretrained('UBC-NLP/MARBERT', num_labels=3)
+#-----------------------------------
+# Tokenize the sentences using bert tokenizer
+df["bert_tokens"] = df.tweet.apply(lambda x: tokenizer(x).tokens())
+df["bert_tokens_ids"] = df.tweet.apply(lambda x: tokenizer(x).tokens())
+df["encoded"] = df.tweet.apply(lambda x: tokenizer.encode_plus(x,return_tensors='pt')['input_ids'])
+df
+```
+
+**Hyper-parameters**
+
+```Python
+# Number of training epochs
+epochs = 20
+# Select the max sentance lenth
+MAX_LEN = 80
+# Select a batch size for training. For fine-tuning BERT on a specific task, the authors recommend a batch size of 16 or 32
+batch_size =64
+```
+
+**Padding**
+- Set the maximum sequence length. The longest sequence in our training set is 39, but we'll leave room on the end anyway.
+- Use the BERT tokenizer to convert the tokens to their index numbers in the BERT vocabulary
+- Apply pad_sequences on our input tokens
+
+```Python
+from keras_preprocessing.sequence import pad_sequences
+
+input_ids = [tokenizer.convert_tokens_to_ids(x) for x in df['bert_tokens']]
+input_ids = pad_sequences(input_ids, maxlen=MAX_LEN, dtype="long", truncating="post", padding="post")
+```
+
+
+**Attention mask**
+- Create the attention mask list
+- Create a mask of 1s for each token followed by 0s for padding
+
+```Python
+attention_masks = []
+for seq in input_ids:
+    seq_mask = [float(i>0) for i in seq]
+    attention_masks.append(seq_mask)
+```
+
+**Build the DataLoader**
+- Convert all of our data into torch tensors, the required datatype for our model
+- Create an iterator of our data with torch DataLoader. This helps save on memory during training because, unlike a for loop, with an iterator the entire dataset does not need to be loaded into memory
+
+```Python
+import torch
+from torch.utils.data import TensorDataset, DataLoader
+from sklearn.model_selection import train_test_split
+
+# Use train_test_split to split our data into train and validation sets for training
+train_inputs, validation_inputs, train_labels, validation_labels = train_test_split(input_ids, encoded_labels,
+                                                             random_state=seed, test_size=0.1)
+train_masks, validation_masks, _, _ = train_test_split(attention_masks, input_ids,
+                                                             random_state=seed, test_size=0.1)
+
+train_inputs = torch.tensor(train_inputs)
+validation_inputs = torch.tensor(validation_inputs)
+train_labels = torch.tensor(train_labels)
+validation_labels = torch.tensor(validation_labels)
+train_masks = torch.tensor(train_masks)
+validation_masks = torch.tensor(validation_masks)
+
+
+train_data = TensorDataset(train_inputs, train_masks, train_labels)
+train_dataloader = DataLoader(train_data, batch_size=batch_size)
+
+validation_data = TensorDataset(validation_inputs, validation_masks, validation_labels)
+validation_dataloader = DataLoader(validation_data, batch_size=batch_size)
+
+```
+
+**Optimizer parameters**
+
+```Python
+import torch.optim as optim
+
+
+param_optimizer = list(model.named_parameters())
+no_decay = ['bias', 'gamma', 'beta']
+optimizer_grouped_parameters = [{'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],'weight_decay_rate': 0.01},
+                                {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)],'weight_decay_rate': 0.0}]
+
+# This variable contains all of the hyperparemeter information our training loop needs
+optimizer = optim.AdamW(optimizer_grouped_parameters,lr=.000005)
+```
+
+**Transfer learning on our dataset**
+
+```Python
+# Function to calculate the accuracy of our predictions vs labels
+def flat_accuracy(preds, labels):
+    pred_flat = np.argmax(preds, axis=1).flatten()
+    labels_flat = labels.flatten()
+    return np.sum(pred_flat == labels_flat) / len(labels_flat)
+#---------------------------------------------
+from tqdm import trange
+import numpy as np
+
+t = []
+# Store our loss and accuracy for plotting
+train_loss_set = []
+
+if torch.cuda.is_available():
+    # Transfer the model to GPU
+    model.to("cuda")
+# trange is a tqdm wrapper around the normal python range
+for _ in trange(epochs, desc="Epoch"):
+
+  # Training
+  # Set our model to training mode (as opposed to evaluation mode)
+  model.train()
+  # Tracking variables
+  tr_loss = 0
+  nb_tr_examples, nb_tr_steps = 0, 0
+  # Train the data for one epoch
+  for step, batch in enumerate(train_dataloader):
+    # Add batch to GPU
+    b_input_ids, b_input_mask, b_labels = batch
+    b_labels = b_labels.type(torch.LongTensor)   # casting to long
+    # Clear out the gradients (by default they accumulate)
+    optimizer.zero_grad()
+    # Forward pass
+    if torch.cuda.is_available():
+        loss = model(b_input_ids.to("cuda"), token_type_ids=None, attention_mask=b_input_mask.to("cuda"), labels=b_labels.to("cuda"))["loss"]
+    else:
+        loss = model(b_input_ids.to("cpu"), token_type_ids=None, attention_mask=b_input_mask.to("cpu"), labels=b_labels.to("cpu"))["loss"]
+
+    train_loss_set.append(loss.item())
+    # Backward pass
+    loss.backward()
+    # Update parameters and take a step using the computed gradient
+    optimizer.step()
+
+    # Update tracking variables
+    tr_loss += loss.item()
+    nb_tr_examples += b_input_ids.size(0)
+    nb_tr_steps += 1
+
+  print("Train loss: {}".format(tr_loss/nb_tr_steps))
+  # Validation
+  # Put model in evaluation mode to evaluate loss on the validation set
+  model.eval()
+  # Tracking variables
+  eval_loss, eval_accuracy = 0, 0
+  nb_eval_steps, nb_eval_examples = 0, 0
+
+  # Evaluate data for one epoch
+  for batch in validation_dataloader:
+    # Add batch to GPU
+    # batch = tuple(t.to(device) for t in batch)
+    # Unpack the inputs from our dataloader
+    b_input_ids, b_input_mask, b_labels = batch
+    b_labels = b_labels.type(torch.LongTensor)   # casting to long
+    # Telling the model not to compute or store gradients, saving memory and speeding up validation
+    with torch.no_grad():
+      # Forward pass, calculate logit predictions
+        if torch.cuda.is_available():
+            logits = model(b_input_ids.to("cuda"), token_type_ids=None, attention_mask=b_input_mask.to("cuda"))
+        else:
+            logits = model(b_input_ids.to("cpu"), token_type_ids=None, attention_mask=b_input_mask.to("cpu"))
+
+    # Move logits and labels to CPU
+    logits = logits["logits"].detach().cpu().numpy()
+    label_ids = b_labels.to('cpu').numpy()
+    tmp_eval_accuracy = flat_accuracy(logits, label_ids)
+    eval_accuracy += tmp_eval_accuracy
+    nb_eval_steps += 1
+
+  print("Validation Accuracy: {}".format(eval_accuracy/nb_eval_steps))
+  if (eval_accuracy/nb_eval_steps) > 0.78:
+    break
+```
