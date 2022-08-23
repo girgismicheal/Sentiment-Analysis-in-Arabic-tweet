@@ -477,3 +477,62 @@ for _ in trange(epochs, desc="Epoch"):
   if (eval_accuracy/nb_eval_steps) > 0.78:
     break
 ```
+
+
+	
+
+# <a name="p6">Infer the Test Data and Prepare the Submission File</a>
+
+![image](https://drive.google.com/uc?export=view&id=1o72wCZZQIF5DcGlzUBK9yYIkiqlwHrT-)
+
+#### **Testing Dataset Preparation**
+
+```Python
+df_submit = pd.read_csv("../input/nlp-arabic-tweets/test.csv")
+df_submit["tweet"] = df_submit.tweet.apply(lambda x: data_cleaning(x))
+df_submit['tweet']=df_submit['tweet'].apply(lambda x: arabert_prep.preprocess(x))
+# Tokenize the sentences using bert tokenizer
+df_submit["bert_tokens"] = df_submit.tweet.apply(lambda x: tokenizer(x).tokens())
+#---------------------------------
+input_ids_submit = [tokenizer.convert_tokens_to_ids(x) for x in df_submit["bert_tokens"]]
+input_ids_submit = pad_sequences(input_ids_submit, maxlen=MAX_LEN, dtype="long", truncating="post", padding="post")
+attention_masks_submit = []
+for seq in input_ids_submit:
+    seq_mask = [float(i>0) for i in seq]
+    attention_masks_submit.append(seq_mask)
+    
+inputs_submit = torch.tensor(input_ids_submit)
+masks_submit = torch.tensor(attention_masks_submit)
+submit_data = TensorDataset(inputs_submit, masks_submit)
+submit_dataloader = DataLoader(submit_data, batch_size=batch_size)
+model.eval()
+if torch.cuda.is_available():
+    model.to("cuda")
+
+outputs = []
+for input, masks in submit_dataloader:
+    torch.cuda.empty_cache() # empty the gpu memory
+    if torch.cuda.is_available():
+        # Transfer the batch to gpu
+        input = input.to('cuda')
+        masks = masks.to('cuda')
+    # Run inference on the batch
+    output = model(input, attention_mask=masks)["logits"]
+    # Transfer the output to CPU again and convert to numpy
+    output = output.cpu().detach().numpy()
+    # Store the output in a list
+    outputs.append(output)
+# Concatenate all the lists within the list into one list
+outputs = [x for y in outputs for x in y]
+# Inverse transform the label encoding
+pred_flat = np.argmax(outputs, axis=1).flatten()
+output_labels = lable_encoder.inverse_transform(pred_flat)
+```
+
+#### **Create the Submission File**
+![image](https://drive.google.com/uc?export=view&id=19ryQs1gNHFYqiYtqbnAQ8RFhpf7uPRMa)
+
+```Python
+submission = pd.DataFrame({"Id":np.arange(1, len(output_labels)+1), "class":output_labels})
+submission.to_csv("submission.csv", index=False)
+```
