@@ -84,3 +84,127 @@ Data_set
 ```
 
 
+
+
+# <a name="p3">Dataset Preparation</a>
+
+### <a name="p3.1">Dataset Cleaning</a>
+- Remove hyperlinks
+- Remove repeated spaces
+- Remove English words
+- Remove mentions
+- Remove emojis
+- Remove tashkeel
+- Remove special characters
+- Remove repeated letters
+- Remove stop words
+- Apply stemmer
+- Normalize letters
+
+**Arabic Stop Word File Importing**
+
+```Python
+arabic_stop_words=[]
+with open ('../input/arabic-helper-filesnlp/Arabic_stop_words.txt',encoding='utf-8') as f :
+    for i in f.readlines() :
+        arabic_stop_words.append(i)
+        arabic_stop_words[-1]=arabic_stop_words[-1][:-1]
+```
+
+**The Cleaning Function**
+
+```Python
+import numpy as np
+import pandas as pd
+import re
+import string,emoji, re
+import pyarabic.araby as ar
+import functools, operator
+import logging
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
+def get_emoji_regexp():
+    # Sort emoji by length to make sure multi-character emojis are matched first
+    emojis = sorted(emoji.EMOJI_DATA, key=len, reverse=True)
+    pattern = u'(' + u'|'.join(re.escape(u) for u in emojis) + u')'
+    return re.compile(pattern)
+
+def data_cleaning (text):
+    text = re.sub(r'^https?:\/\/.*[\r\n]*', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^http?:\/\/.*[\r\n]*', '', text, flags=re.MULTILINE)
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"https\S+", "", text)
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub("(\s\d+)","",text)
+    text = re.sub(r"$\d+\W+|\b\d+\b|\W+\d+$", "", text)
+    text = re.sub("\d+", " ", text)
+    text = ar.strip_tashkeel(text)
+    text = ar.strip_tatweel(text)
+    text = text.replace("#", " ");
+    text = text.replace("@", " ");
+    text = text.replace("_", " ");
+    
+    # Remove arabic signs
+    text = text[0:2] + ''.join([text[i] for i in range(2, len(text)) if text[i]!=text[i-1] or text[i]!=text[i-2]])
+    text =  re.sub(r'([@A-Za-z0-9_ـــــــــــــ]+)|[^\w\s]|#|http\S+', '', text)
+    text =  '' if text in arabic_stop_words else text
+    from nltk.stem.isri import ISRIStemmer
+    text=ISRIStemmer().stem(text)
+    
+    translator = str.maketrans('', '', string.punctuation)
+    text = text.translate(translator)
+    em = text
+    em_split_emoji = get_emoji_regexp().split(em)
+    em_split_whitespace = [substr.split() for substr in em_split_emoji]
+    em_split = functools.reduce(operator.concat, em_split_whitespace)
+    text = " ".join(em_split)
+    text = re.sub(r'(.)\1+', r'\1', text)
+    
+    text = text.replace("آ", "ا")
+    text = text.replace("إ", "ا")
+    text = text.replace("أ", "ا")
+    text = text.replace("ؤ", "و")
+    text = text.replace("ئ", "ي")
+    return text
+```
+
+**Apply the Cleaning Function**
+
+```Python
+Data_set['tweet']=Data_set['tweet'].apply(lambda x: data_cleaning(x))
+Data_set
+```
+
+### <a name="p3.2">Dataset Tokenization</a>
+
+```Python
+from arabert.preprocess import ArabertPreprocessor
+
+model_name = "UBC-NLP/MARBERT"
+df = Data_set
+arabert_prep = ArabertPreprocessor(model_name=model_name)
+df['tweet']=Data_set['tweet'].apply(lambda x: arabert_prep.preprocess(x))
+df
+```
+
+### <a name="p3.3">Label Encoding</a>
+
+```Python
+from sklearn import preprocessing
+lable_encoder = preprocessing.LabelEncoder()
+
+encoded_labels=lable_encoder.fit_transform(Data_set["class"])
+df['class']=encoded_labels
+df
+```
+
+### <a name="p3.4">Train Test Splitting</a>
+
+```Python
+seed = 42
+from sklearn.model_selection import train_test_split
+X_train, X_validation, y_train, y_validation=train_test_split(df['tweet'], df['class'], test_size=0.2, random_state=seed)
+```
+
+
