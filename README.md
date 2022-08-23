@@ -281,3 +281,13 @@ results_df
 print('champion_model is ',champion_model_name)
 print('champion_embedding is',champion_embedding)
 ```
+
+
+
+
+# <a name="p5">Transfer Learning a Pre-trained Models</a>
+- Used a transformer-based model pre-trained on Arabic language dataset from hugging face called **'MARBERT'** model, chech the link for more infos [hugging face](https://huggingface.co/UBC-NLP/MARBERT).
+
+![image](https://drive.google.com/uc?export=view&id=1iiQtLmtmTgWAqPsOie8kVXCs65RgJJeT)
+
+- Kindly, check this link to read more about the transfer learning [what-is-transfer-learning-and-why-is-it-needed](https://www.educative.io/answers/what-is-transfer-learning-and-why-is-it-needed)
